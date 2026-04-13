@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gastos Casa</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -135,8 +135,8 @@ select option { font-size: 13px; }
 <script>
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 // REEMPLAZÁ estos valores con los tuyos de Supabase
-const SUPABASE_URL = 'TU_SUPABASE_URL';
-const SUPABASE_KEY = 'TU_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://fovfwbpczwycfxxeolfv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdmZ3YnBjend5Y2Z4eGVvbGZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwOTI4MTMsImV4cCI6MjA5MTY2ODgxM30._sSxV5fOisObcw69iltLqtAy5FkhyCiAB0W6HgsfKzg';
 
 // ─── CONSTANTES ──────────────────────────────────────────────────────────────
 const SUBCATS = {
@@ -186,7 +186,7 @@ function setSync(txt) { document.getElementById('header-sync').textContent=txt; 
 
 // ─── SUPABASE ─────────────────────────────────────────────────────────────────
 async function initSupabase() {
-  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
 async function loadAll() {
