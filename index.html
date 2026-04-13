@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gastos Casa</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface2: #f0ede6;
+  --border: #e2ddd6;
+  --text: #1a1714;
+  --text2: #6b6560;
+  --text3: #a09990;
+  --accent: #2d5a3d;
+  --accent-light: #e8f0eb;
+  --accent2: #8b4513;
+  --agustin: #2d5a3d;
+  --dolores: #8b2252;
+  --danger: #c0392b;
+  --warn: #c67c2a;
+  --ok: #2d5a3d;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+#login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+.login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 100%; max-width: 360px; text-align: center; }
+.login-card h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+.login-card p { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+.login-buttons { display: flex; flex-direction: column; gap: 10px; }
+.btn-login { padding: 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 500; transition: all 0.15s; }
+.btn-login:hover { background: var(--accent-light); border-color: var(--accent); }
+.btn-login.agustin { border-color: var(--agustin); color: var(--agustin); }
+.btn-login.dolores { border-color: var(--dolores); color: var(--dolores); }
+#app { display: none; max-width: 860px; margin: 0 auto; padding: 16px; }
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.header-left h1 { font-size: 18px; font-weight: 500; }
+.header-left span { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.user-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid; }
+.user-badge.agustin { background: #e8f0eb; color: var(--agustin); border-color: #b8d4be; }
+.user-badge.dolores { background: #f5e8ef; color: var(--dolores); border-color: #e0b8cc; }
+nav { display: flex; gap: 4px; margin-bottom: 18px; background: var(--surface2); padding: 4px; border-radius: var(--radius); border: 1px solid var(--border); flex-wrap: wrap; }
+nav button { flex: 1; min-width: 100px; padding: 8px 10px; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--text2); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 400; transition: all 0.15s; white-space: nowrap; }
+nav button.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+.section-title { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; }
+label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; margin-top: 12px; }
+label:first-child { margin-top: 0; }
+input, select, textarea { width: 100%; padding: 9px 11px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; font-family: inherit; transition: border-color 0.15s; }
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+input[type=number] { font-family: 'DM Mono', monospace; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media(max-width: 600px) { .grid2 { grid-template-columns: 1fr; } .grid3 { grid-template-columns: 1fr 1fr; } .grid4 { grid-template-columns: 1fr 1fr; } }
+.btn { padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+.btn:hover { background: var(--surface2); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { opacity: 0.88; }
+.btn-danger { color: var(--danger); border-color: #f5c6c2; }
+.btn-danger:hover { background: #fdf0ef; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px; }
+.metric-lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; }
+.metric-val { font-size: 22px; font-weight: 500; margin-top: 3px; font-family: 'DM Mono', monospace; }
+.metric-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 7px 9px; font-weight: 500; color: var(--text3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+td { padding: 8px 9px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.tag-A { background: #e8f0eb; color: var(--agustin); }
+.tag-D { background: #f5e8ef; color: var(--dolores); }
+.bar-bg { background: var(--surface2); border-radius: 3px; height: 5px; overflow: hidden; margin-top: 4px; }
+.bar-fill { height: 5px; border-radius: 3px; }
+.sub-badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px; background: var(--surface2); color: var(--text2); margin-left: 5px; }
+.alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; }
+.alert-ok { background: var(--accent-light); color: var(--ok); border: 1px solid #b8d4be; }
+.alert-err { background: #fdf0ef; color: var(--danger); border: 1px solid #f5c6c2; }
+.toggle-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.tgl { padding: 4px 11px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; font-size: 12px; font-family: inherit; transition: all 0.15s; }
+.tgl.on { background: var(--text); color: var(--surface); border-color: var(--text); }
+.empty { color: var(--text2); font-size: 13px; text-align: center; padding: 32px 16px; }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading { text-align: center; padding: 40px; color: var(--text2); font-size: 13px; }
+.mono { font-family: 'DM Mono', monospace; }
+select option { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>🏠 Gastos Casa</h1>
+    <p>Seleccioná tu usuario para continuar</p>
+    <div class="login-buttons">
+      <button class="btn-login agustin" onclick="login('Agustin')">Agustín</button>
+      <button class="btn-login dolores" onclick="login('Dolores')">Dolores</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-left">
+      <h1>🏠 Gastos Casa</h1>
+      <span id="header-sync">—</span>
+    </div>
+    <div>
+      <span id="user-badge" class="user-badge" onclick="logout()" title="Cambiar usuario"></span>
+    </div>
+  </header>
+  <nav>
+    <button onclick="setTab('carga')" id="tab-carga">Cargar</button>
+    <button onclick="setTab('reporte')" id="tab-reporte">Reporte</button>
+    <button onclick="setTab('grafico')" id="tab-grafico">Evolución</button>
+    <button onclick="setTab('presupuesto')" id="tab-presupuesto">Presupuesto</button>
+    <button onclick="setTab('config')" id="tab-config">Categorías</button>
+  </nav>
+  <div id="alert-box"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+// REEMPLAZÁ estos valores con los tuyos de Supabase
+const SUPABASE_URL = 'TU_SUPABASE_URL';
+const SUPABASE_KEY = 'TU_SUPABASE_ANON_KEY';
+
+// ─── CONSTANTES ──────────────────────────────────────────────────────────────
+const SUBCATS = {
+  'Alimentación':    ['Supermercado','Gastronomia'],
+  'Hogar':           ['Luz','Gas','Agua','ABL','Servicios del Hogar','Mejoras Casa','Mantenimiento','Mobiliario'],
+  'Familia':         ['Educacion','Ropa','Regalos','Familia Extendida','Empleadas'],
+  'Transporte':      ['Movilidad','Nafta','Gastos Auto','Patente'],
+  'Seguros':         ['Seguros'],
+  'Entretenimiento': ['Entretenimiento','Viajes'],
+  'Tecnología':      ['Tecnologia','Telefono y Comunicaciones']
+};
+const DEFAULT_CATS = [
+  'Educacion','Supermercado','Entretenimiento','Gastronomia','Viajes','Movilidad','Nafta',
+  'Seguros','Luz','Gas','Agua','Servicios del Hogar','Gastos Auto','Patente','Empleadas',
+  'ABL','Mobiliario','Mejoras Casa','Mantenimiento','Ropa','Tecnologia',
+  'Telefono y Comunicaciones','Regalos','Familia Extendida'
+];
+const MEDIOS = ['Efectivo','Débito','Crédito','Transferencia','Otro'];
+const CHART_COLORS = ['#2d5a3d','#8b4513','#1a5276','#8b2252','#6b4f8b','#2e7d5c','#c67c2a','#2d6a8b','#7d3c2d','#3d6b2d','#8b6914','#2d4a6b','#6b2d4a','#4a6b2d','#2d5a7a'];
+
+// ─── ESTADO ──────────────────────────────────────────────────────────────────
+let sb, currentUser = null, currentTab = 'carga';
+let gastos = [], presupuestos = {}, cats = [...DEFAULT_CATS];
+let chartInstance = null;
+let state = {
+  reportMode: 'mes',
+  reportMonth: today().slice(0,7),
+  reportFrom: today().slice(0,7)+'-01',
+  reportTo: today(),
+  budgetMonth: today().slice(0,7),
+  chartView: 'sub',
+  chartRubro: 'TOTAL',
+  subMode: false,
+  form: { monto:'', categoria:'', medio:'Crédito', fecha: today(), nota:'' }
+};
+
+function today() { return new Date().toISOString().slice(0,10); }
+function fmt(n) { return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0); }
+function monthLabel(m) { const [y,mo]=m.split('-'); return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+mo-1]+' '+y; }
+function getSub(cat) { for(const [s,cs] of Object.entries(SUBCATS)) if(cs.includes(cat)) return s; return 'Otras'; }
+function showAlert(text,type='ok') {
+  const el=document.getElementById('alert-box');
+  el.innerHTML=`<div class="alert alert-${type}">${text}</div>`;
+  setTimeout(()=>el.innerHTML='',3500);
+}
+function setSync(txt) { document.getElementById('header-sync').textContent=txt; }
+
+// ─── SUPABASE ─────────────────────────────────────────────────────────────────
+async function initSupabase() {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
+
+async function loadAll() {
+  setSync('Cargando...');
+  try {
+    const [{ data: g }, { data: p }, { data: c }] = await Promise.all([
+      sb.from('gastos').select('*').order('fecha', { ascending: false }),
+      sb.from('presupuestos').select('*'),
+      sb.from('categorias').select('*').order('nombre')
+    ]);
+    gastos = g || [];
+    presupuestos = {};
+    (p||[]).forEach(r => {
+      if(!presupuestos[r.mes]) presupuestos[r.mes]={};
+      presupuestos[r.mes][r.categoria]=r.monto;
+    });
+    if(c && c.length>0) cats = c.map(r=>r.nombre);
+    setSync('Sincronizado · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    setSync('Error de conexión');
+    showAlert('No se pudo conectar a la base de datos. Verificá la configuración de Supabase.','err');
+  }
+  renderTab();
+}
+
+async function saveGasto(g) {
+  const { error } = await sb.from('gastos').insert([g]);
+  if(error) throw error;
+}
+async function deleteGasto(id) {
+  const { error } = await sb.from('gastos').delete().eq('id', id);
+  if(error) throw error;
+}
+async function savePres(mes, cat, monto) {
+  const { error } = await sb.from('presupuestos').upsert({ mes, categoria: cat, monto }, { onConflict: 'mes,categoria' });
+  if(error) throw error;
+}
+async function deletePres(mes, cat) {
+  await sb.from('presupuestos').delete().eq('mes', mes).eq('categoria', cat);
+}
+async function saveCat(nombre) {
+  const { error } = await sb.from('categorias').insert([{ nombre }]);
+  if(error) throw error;
+}
+async function deleteCat(nombre) {
+  await sb.from('categorias').delete().eq('nombre', nombre);
+}
+
+// ─── AUTH LOCAL ───────────────────────────────────────────────────────────────
+function login(user) {
+  currentUser = user;
+  localStorage.setItem('gc_user', user);
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const badge = document.getElementById('user-badge');
+  badge.textContent = user + ' · salir';
+  badge.className = 'user-badge ' + user.toLowerCase();
+  loadAll();
+  setTab('carga');
+}
+function logout() {
+  if(!confirm('¿Cambiar de usuario?')) return;
+  localStorage.removeItem('gc_user');
+  location.reload();
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function setTab(t) {
+  currentTab = t;
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+t)?.classList.add('active');
+  renderTab();
+}
+function renderTab() {
+  const c = document.getElementById('content');
+  if(currentTab==='carga') c.innerHTML = buildCarga();
+  else if(currentTab==='reporte') c.innerHTML = buildReporte();
+  else if(currentTab==='grafico') { c.innerHTML = buildGrafico(); renderChart(); }
+  else if(currentTab==='presupuesto') c.innerHTML = buildPresupuesto();
+  else if(currentTab==='config') c.innerHTML = buildConfig();
+}
+
+// ─── CARGA ────────────────────────────────────────────────────────────────────
+function buildCarga() {
+  const f = state.form;
+  let h = `<div class="card">
+    <div class="section-title">Nuevo gasto</div>
+    <div class="grid2">
+      <div><label>Monto ($)</label><input type="number" id="f-monto" value="${f.monto}" placeholder="0" min="0" step="1" class="mono"></div>
+      <div><label>Fecha</label><input type="date" id="f-fecha" value="${f.fecha}"></div>
+    </div>
+    <label>Categoría</label>
+    <select id="f-cat">
+      <option value="">— Seleccionar —</option>`;
+  cats.forEach(c => { h += `<option value="${c}" ${f.categoria===c?'selected':''}>${c} · ${getSub(c)}</option>`; });
+  h += `</select>
+    <div class="grid2">
+      <div><label>Medio de pago</label><select id="f-medio">${MEDIOS.map(m=>`<option ${f.medio===m?'selected':''}>${m}</option>`).join('')}</select></div>
+      <div><label>Nota (opcional)</label><input type="text" id="f-nota" value="${f.nota||''}" placeholder="Descripción breve"></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="accionGuardarGasto()">Guardar gasto</button>
+      <button class="btn" onclick="limpiarForm()">Limpiar</button>
+    </div>
+  </div>`;
+  const recientes = gastos.slice(0,10);
+  if(recientes.length>0){
+    h += `<div class="card"><div class="section-title">Últimos gastos</div><table>
+      <thead><tr><th>Fecha</th><th>Categoría</th><th>Nota</th><th>Medio</th><th style="text-align:right">Monto</th><th>Usuario</th><th></th></tr></thead><tbody>`;
+    recientes.forEach(g => {
+      h += `<tr><td class="mono" style="font-size:12px">${g.fecha}</td>
+        <td>${g.categoria}<span class="sub-badge">${getSub(g.categoria)}</span></td>
+        <td style="color:var(--text2);font-size:12px">${g.nota||''}</td>
+        <td style="font-size:12px">${g.medio}</td>
+        <td style="text-align:right;font-weight:500" class="mono">${fmt(g.monto)}</td>
+        <td><span class="tag tag-${g.usuario[0]}">${g.usuario}</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="accionEliminar('${g.id}')">×</button></td></tr>`;
+    });
+    h += `</tbody></table></div>`;
+  }
+  return h;
+}
+
+async function accionGuardarGasto() {
+  const monto = parseFloat(document.getElementById('f-monto')?.value);
+  const cat = document.getElementById('f-cat')?.value;
+  const medio = document.getElementById('f-medio')?.value;
+  const fecha = document.getElementById('f-fecha')?.value;
+  const nota = document.getElementById('f-nota')?.value;
+  if(!monto||monto<=0||!cat) { showAlert('Completá monto y categoría.','err'); return; }
+  const gasto = { usuario: currentUser, monto, categoria: cat, medio, fecha, nota };
+  try {
+    await saveGasto(gasto);
+    showAlert(`Gasto de ${fmt(monto)} en ${cat} guardado.`);
+    state.form = { ...state.form, monto:'', nota:'' };
+    await loadAll();
+  } catch(e) { showAlert('Error al guardar: '+e.message,'err'); }
+}
+async function accionEliminar(id) {
+  if(!confirm('¿Eliminar este gasto?')) return;
+  try { await deleteGasto(id); await loadAll(); }
+  catch(e) { showAlert('Error al eliminar.','err'); }
+}
+function limpiarForm() {
+  state.form = { monto:'', categoria:'', medio:'Crédito', fecha: today(), nota:'' };
+  renderTab();
+}
+
+// ─── REPORTE ──────────────────────────────────────────────────────────────────
+function getFiltered() {
+  const {reportMode,reportMonth,reportFrom,reportTo} = state;
+  if(reportMode==='mes') return gastos.filter(g=>g.fecha?.slice(0,7)===reportMonth);
+  return gastos.filter(g=>g.fecha>=reportFrom && g.fecha<=reportTo);
+}
+function buildReporte() {
+  const {reportMode,reportMonth,reportFrom,reportTo,subMode} = state;
+  let h = `<div class="card">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn ${reportMode==='mes'?'btn-primary':''}" onclick="st('reportMode','mes')">Por mes</button>
+      <button class="btn ${reportMode==='periodo'?'btn-primary':''}" onclick="st('reportMode','periodo')">Período libre</button>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <span style="font-size:12px;color:var(--text2)">Por subcategoría</span>
+        <button class="tgl ${subMode?'on':''}" onclick="stb('subMode')">${subMode?'Sí':'No'}</button>
+      </div>
+    </div>`;
+  if(reportMode==='mes') {
+    h += `<div><label>Mes</label><input type="month" value="${reportMonth}" onchange="st('reportMonth',this.value)" style="width:180px"></div>`;
+  } else {
+    h += `<div class="grid2"><div><label>Desde</label><input type="date" value="${reportFrom}" onchange="st('reportFrom',this.value)"></div><div><label>Hasta</label><input type="date" value="${reportTo}" onchange="st('reportTo',this.value)"></div></div>`;
+  }
+  h += `</div>`;
+  const list = getFiltered();
+  if(list.length===0) return h+`<div class="empty">Sin gastos para el período seleccionado.</div>`;
+  const total = list.reduce((s,g)=>s+Number(g.monto),0);
+  const totA = list.filter(g=>g.usuario==='Agustin').reduce((s,g)=>s+Number(g.monto),0);
+  const totD = list.filter(g=>g.usuario==='Dolores').reduce((s,g)=>s+Number(g.monto),0);
+  h += `<div class="grid3" style="margin-bottom:14px">
+    <div class="metric"><div class="metric-lbl">Total</div><div class="metric-val">${fmt(total)}</div></div>
+    <div class="metric"><div class="metric-lbl">Agustín</div><div class="metric-val">${fmt(totA)}</div></div>
+    <div class="metric"><div class="metric-lbl">Dolores</div><div class="metric-val">${fmt(totD)}</div></div>
+  </div>`;
+  const budMes = reportMode==='mes' ? reportMonth : reportFrom.slice(0,7);
+  const budget = presupuestos[budMes]||{};
+  if(!subMode) {
+    const byRubro = {};
+    list.forEach(g=>{ byRubro[g.categoria]=(byRubro[g.categoria]||0)+Number(g.monto); });
+    const sorted = Object.entries(byRubro).sort((a,b)=>b[1]-a[1]);
+    const totalBud = Object.values(budget).reduce((s,v)=>s+Number(v),0);
+    h += `<div class="card"><div class="section-title">Por categoría</div><table>
+      <thead><tr><th>Categoría</th><th>Subcategoría</th><th style="text-align:right">Gasto</th><th style="text-align:right">Presupuesto</th><th style="min-width:90px">Avance</th></tr></thead><tbody>`;
+    sorted.forEach(([cat,monto])=>{
+      const b=Number(budget[cat]||0);
+      const pct=b>0?Math.min(120,Math.round(monto/b*100)):null;
+      const col=pct===null?'#3266ad':pct>100?'#c0392b':pct>80?'#c67c2a':'#2d5a3d';
+      h+=`<tr><td>${cat}</td><td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
+        <td style="text-align:right" class="mono">${fmt(monto)}</td>
+        <td style="text-align:right;color:var(--text2)" class="mono">${b>0?fmt(b):'—'}</td>
+        <td>${b>0?`<span style="font-size:11px;color:${col};font-weight:500">${pct}%</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100,pct)}%;background:${col}"></div></div>`:''}</td></tr>`;
+    });
+    h+=`</tbody></table>`;
+    if(totalBud>0){
+      const p=Math.round(total/totalBud*100);
+      const c=p>100?'#c0392b':p>80?'#c67c2a':'#2d5a3d';
+      h+=`<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:center;font-size:13px">
+        <strong>Total vs presupuesto</strong>
+        <span class="mono">${fmt(total)} / ${fmt(totalBud)}</span>
+        <span style="font-weight:500;color:${c}">${p}%</span></div>`;
+    }
+    h+=`</div>`;
+  } else {
+    const bySub={}, budBySub={};
+    list.forEach(g=>{ const s=getSub(g.categoria); bySub[s]=(bySub[s]||0)+Number(g.monto); });
+    cats.forEach(c=>{ if(budget[c]){ const s=getSub(c); budBySub[s]=(budBySub[s]||0)+Number(budget[c]); }});
+    const sorted=Object.entries(bySub).sort((a,b)=>b[1]-a[1]);
+    h+=`<div class="card"><div class="section-title">Por subcategoría</div><table>
+      <thead><tr><th>Subcategoría</th><th style="text-align:right">Gasto</th><th style="text-align:right">Presupuesto</th><th style="min-width:90px">Avance</th></tr></thead><tbody>`;
+    sorted.forEach(([sub,monto])=>{
+      const b=Number(budBySub[sub]||0);
+      const pct=b>0?Math.min(120,Math.round(monto/b*100)):null;
+      const col=pct===null?'#3266ad':pct>100?'#c0392b':pct>80?'#c67c2a':'#2d5a3d';
+      h+=`<tr><td style="font-weight:500">${sub}</td>
+        <td style="text-align:right" class="mono">${fmt(monto)}</td>
+        <td style="text-align:right;color:var(--text2)" class="mono">${b>0?fmt(b):'—'}</td>
+        <td>${b>0?`<span style="font-size:11px;color:${col};font-weight:500">${pct}%</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100,pct)}%;background:${col}"></div></div>`:''}</td></tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+  h+=`<div class="card"><div class="section-title">Todas las transacciones</div><table>
+    <thead><tr><th>Fecha</th><th>Categoría</th><th>Nota</th><th>Medio</th><th style="text-align:right">Monto</th><th>Usuario</th></tr></thead><tbody>`;
+  [...list].sort((a,b)=>b.fecha?.localeCompare(a.fecha)).forEach(g=>{
+    h+=`<tr><td class="mono" style="font-size:12px">${g.fecha}</td><td>${g.categoria}</td>
+      <td style="color:var(--text2);font-size:12px">${g.nota||''}</td>
+      <td style="font-size:12px">${g.medio}</td>
+      <td style="text-align:right" class="mono">${fmt(g.monto)}</td>
+      <td><span class="tag tag-${g.usuario?.[0]||'A'}">${g.usuario?.[0]||'?'}</span></td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  return h;
+}
+
+// ─── GRÁFICO ──────────────────────────────────────────────────────────────────
+function buildGrafico() {
+  const {chartView,chartRubro} = state;
+  const allMonths=[...new Set(gastos.map(g=>g.fecha?.slice(0,7)).filter(Boolean))].sort();
+  let h=`<div class="card">
+    <div class="toggle-row">
+      <span style="font-size:12px;color:var(--text2)">Agrupar por:</span>
+      <button class="tgl ${chartView==='sub'?'on':''}" onclick="stChart('sub')">Subcategoría</button>
+      <button class="tgl ${chartView==='cat'?'on':''}" onclick="stChart('cat')">Categoría</button>
+      <button class="tgl ${chartView==='usuario'?'on':''}" onclick="stChart('usuario')">Usuario</button>
+    </div>
+    <div class="toggle-row">
+      <span style="font-size:12px;color:var(--text2)">Filtrar:</span>
+      <button class="tgl ${chartRubro==='TOTAL'?'on':''}" onclick="stRubro('TOTAL')">Total</button>`;
+  if(chartView==='sub') Object.keys(SUBCATS).concat(['Otras']).forEach(s=>{h+=`<button class="tgl ${chartRubro===s?'on':''}" onclick="stRubro('${s}')">${s}</button>`;});
+  else if(chartView==='cat') cats.forEach(c=>{h+=`<button class="tgl ${chartRubro===c?'on':''}" onclick="stRubro('${escQ(c)}')">${c}</button>`;});
+  h+=`</div></div>`;
+  if(allMonths.length===0) return h+`<div class="empty">Sin datos para graficar.</div>`;
+  h+=`<div class="card"><div style="position:relative;height:320px"><canvas id="chart-canvas"></canvas></div></div>`;
+  return h;
+}
+function escQ(s){return s.replace(/'/g,"\\'");}
+function renderChart() {
+  const canvas = document.getElementById('chart-canvas');
+  if(!canvas) return;
+  if(chartInstance){chartInstance.destroy();chartInstance=null;}
+  const {chartView,chartRubro} = state;
+  const allMonths=[...new Set(gastos.map(g=>g.fecha?.slice(0,7)).filter(Boolean))].sort();
+  if(!allMonths.length) return;
+  const labels = allMonths.map(monthLabel);
+  let datasets=[];
+  const monthTotal=(m,filterFn)=>gastos.filter(g=>g.fecha?.slice(0,7)===m&&(filterFn?filterFn(g):true)).reduce((s,g)=>s+Number(g.monto),0);
+  if(chartView==='usuario'){
+    ['Agustin','Dolores'].forEach((u,i)=>{
+      datasets.push({label:u,data:allMonths.map(m=>monthTotal(m,g=>g.usuario===u&&(chartRubro==='TOTAL'||getSub(g.categoria)===chartRubro||g.categoria===chartRubro))),backgroundColor:i===0?'rgba(45,90,61,0.75)':'rgba(139,34,82,0.75)',borderColor:i===0?'#2d5a3d':'#8b2252',borderWidth:1.5});
+    });
+  } else if(chartRubro!=='TOTAL'){
+    const filterFn = chartView==='sub'?(g=>getSub(g.categoria)===chartRubro):(g=>g.categoria===chartRubro);
+    datasets.push({label:chartRubro,data:allMonths.map(m=>monthTotal(m,filterFn)),backgroundColor:'rgba(45,90,61,0.15)',borderColor:'#2d5a3d',borderWidth:2,fill:true,tension:0.3,pointRadius:4,pointBackgroundColor:'#2d5a3d'});
+  } else {
+    const groups = chartView==='sub'?[...Object.keys(SUBCATS),'Otras']:cats;
+    groups.forEach((g,i)=>{
+      const filterFn = chartView==='sub'?(x=>getSub(x.categoria)===g):(x=>x.categoria===g);
+      const data=allMonths.map(m=>monthTotal(m,filterFn));
+      if(data.some(v=>v>0)) datasets.push({label:g,data,backgroundColor:CHART_COLORS[i%CHART_COLORS.length]+'bb',borderColor:CHART_COLORS[i%CHART_COLORS.length],borderWidth:1});
+    });
+  }
+  const isBar=datasets.length>1;
+  chartInstance=new Chart(canvas,{
+    type:isBar?'bar':'line',
+    data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:datasets.length>1,position:'bottom',labels:{boxWidth:10,font:{size:11},padding:12}},
+        tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)}`}}},
+      scales:{
+        x:{stacked:isBar,grid:{display:false},ticks:{font:{size:11},maxRotation:45}},
+        y:{stacked:isBar,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11},callback:v=>v>=1000000?'$'+(v/1e6).toFixed(1)+'M':v>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v}}
+      }
+    }
+  });
+}
+window.stChart=function(v){state.chartView=v;state.chartRubro='TOTAL';renderTab();}
+window.stRubro=function(r){state.chartRubro=r;renderChart();}
+
+// ─── PRESUPUESTO ──────────────────────────────────────────────────────────────
+function buildPresupuesto() {
+  const b=presupuestos[state.budgetMonth]||{};
+  let h=`<div class="card">
+    <div class="section-title">Presupuesto mensual</div>
+    <div style="margin-bottom:14px"><label>Mes</label><input type="month" value="${state.budgetMonth}" onchange="st('budgetMonth',this.value)" style="width:180px"></div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Ingresá el presupuesto para cada categoría. Se usa como referencia en el reporte del mismo mes.</p>
+    <table><thead><tr><th>Categoría</th><th>Subcategoría</th><th style="text-align:right;width:160px">Presupuesto mensual ($)</th></tr></thead><tbody>`;
+  cats.forEach(cat=>{
+    const sid='bud_'+cat.replace(/[^a-z0-9]/gi,'_');
+    h+=`<tr><td>${cat}</td><td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
+      <td style="text-align:right"><input type="number" id="${sid}" value="${b[cat]||''}" placeholder="0" min="0" step="100" class="mono" style="width:140px;text-align:right"></td></tr>`;
+  });
+  h+=`</tbody></table><div style="margin-top:16px"><button class="btn btn-primary" onclick="accionGuardarPres()">Guardar presupuesto</button></div></div>`;
+  return h;
+}
+async function accionGuardarPres(){
+  const mes=state.budgetMonth;
+  try {
+    for(const cat of cats){
+      const sid='bud_'+cat.replace(/[^a-z0-9]/gi,'_');
+      const el=document.getElementById(sid);
+      const v=el?parseFloat(el.value):0;
+      if(v>0) await savePres(mes,cat,v);
+      else await deletePres(mes,cat);
+    }
+    await loadAll();
+    showAlert('Presupuesto guardado para '+monthLabel(mes)+'.');
+  }catch(e){showAlert('Error al guardar presupuesto.','err');}
+}
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+function buildConfig(){
+  let h=`<div class="card"><div class="section-title">Subcategorías</div>
+    <table><thead><tr><th>Subcategoría</th><th>Categorías incluidas</th></tr></thead><tbody>`;
+  Object.entries(SUBCATS).forEach(([s,cs])=>{h+=`<tr><td style="font-weight:500">${s}</td><td style="font-size:12px;color:var(--text2)">${cs.join(', ')}</td></tr>`;});
+  h+=`<tr><td style="font-weight:500">Otras</td><td style="font-size:12px;color:var(--text2)">Categorías sin subcategoría asignada</td></tr>`;
+  h+=`</tbody></table></div>
+  <div class="card"><div class="section-title">Gestión de categorías</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input type="text" id="new-cat" placeholder="Nueva categoría..." style="flex:1">
+      <button class="btn btn-primary" onclick="accionAgregarCat()">Agregar</button>
+    </div>
+    <table><thead><tr><th>Categoría</th><th>Subcategoría</th><th></th></tr></thead><tbody>`;
+  cats.forEach(cat=>{
+    h+=`<tr><td>${cat}</td><td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="accionEliminarCat('${escQ(cat)}')">Eliminar</button></td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  return h;
+}
+async function accionAgregarCat(){
+  const v=document.getElementById('new-cat')?.value.trim();
+  if(!v){showAlert('Ingresá un nombre.','err');return;}
+  if(cats.includes(v)){showAlert('Ya existe.','err');return;}
+  try{await saveCat(v);await loadAll();showAlert(`Categoría "${v}" agregada.`);}
+  catch(e){showAlert('Error: '+e.message,'err');}
+}
+async function accionEliminarCat(cat){
+  if(!confirm(`¿Eliminar la categoría "${cat}"?`))return;
+  try{await deleteCat(cat);await loadAll();}
+  catch(e){showAlert('Error al eliminar.','err');}
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+window.st=function(k,v){state[k]=v;renderTab();}
+window.stb=function(k){state[k]=!state[k];renderTab();}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(async function(){
+  await initSupabase();
+  const saved=localStorage.getItem('gc_user');
+  if(saved) login(saved);
+})();
+</script>
+</body>
+</html>
