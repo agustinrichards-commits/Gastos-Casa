@@ -139,7 +139,7 @@ const SUPABASE_URL = 'https://fovfwbpczwycfxxeolfv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdmZ3YnBjend5Y2Z4eGVvbGZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwOTI4MTMsImV4cCI6MjA5MTY2ODgxM30._sSxV5fOisObcw69iltLqtAy5FkhyCiAB0W6HgsfKzg';
 
 // ─── CONSTANTES ──────────────────────────────────────────────────────────────
-const SUBCATS = {
+let SUBCATS = {
   'Alimentación':    ['Supermercado','Gastronomia'],
   'Hogar':           ['Luz','Gas','Agua','ABL','Servicios del Hogar','Mejoras Casa','Mantenimiento','Mobiliario'],
   'Familia':         ['Educacion','Ropa','Regalos','Familia Extendida','Empleadas'],
@@ -148,6 +148,7 @@ const SUBCATS = {
   'Entretenimiento': ['Entretenimiento','Viajes'],
   'Tecnología':      ['Tecnologia','Telefono y Comunicaciones']
 };
+let subcats_list = Object.keys(SUBCATS);
 const DEFAULT_CATS = [
   'Educacion','Supermercado','Entretenimiento','Gastronomia','Viajes','Movilidad','Nafta',
   'Seguros','Luz','Gas','Agua','Servicios del Hogar','Gastos Auto','Patente','Empleadas',
@@ -211,10 +212,11 @@ async function sbFetch(method, table, body, params) {
 async function loadAll() {
   setSync('Cargando...');
   try {
-    const [g, p, c] = await Promise.all([
+    const [g, p, c, sc] = await Promise.all([
       sbFetch('GET', 'gastos', null, {'order': 'fecha.desc'}),
       sbFetch('GET', 'presupuestos', null, {}),
-      sbFetch('GET', 'categorias', null, {'order': 'nombre.asc'})
+      sbFetch('GET', 'categorias', null, {'order': 'nombre.asc'}),
+      sbFetch('GET', 'subcategorias', null, {'order': 'nombre.asc'})
     ]);
     gastos = g || [];
     presupuestos = {};
@@ -222,7 +224,19 @@ async function loadAll() {
       if(!presupuestos[r.mes]) presupuestos[r.mes]={};
       presupuestos[r.mes][r.categoria]=r.monto;
     });
-    if(c && c.length>0) cats = c.map(r=>r.nombre);
+    if(c && c.length>0) {
+      cats = c.map(r=>r.nombre);
+      // Rebuild SUBCATS from DB data
+      SUBCATS = {};
+      c.forEach(r => {
+        const sub = r.subcategoria || 'Otras';
+        if(sub !== 'Otras') {
+          if(!SUBCATS[sub]) SUBCATS[sub] = [];
+          SUBCATS[sub].push(r.nombre);
+        }
+      });
+    }
+    if(sc && sc.length>0) subcats_list = sc.map(r=>r.nombre);
     setSync('Sincronizado · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
   } catch(e) {
     setSync('Error de conexión');
@@ -254,8 +268,22 @@ async function savePres(mes, cat, monto) {
 async function deletePres(mes, cat) {
   try { await sbFetch('DELETE', 'presupuestos', null, {'mes': 'eq.' + mes, 'categoria': 'eq.' + cat}); } catch(e) {}
 }
-async function saveCat(nombre) {
-  await sbFetch('POST', 'categorias', { nombre });
+async function saveCat(nombre, subcategoria) {
+  await sbFetch('POST', 'categorias', { nombre, subcategoria: subcategoria || 'Otras' });
+}
+async function saveSubcat(nombre) {
+  await sbFetch('POST', 'subcategorias', { nombre });
+}
+async function deleteSubcat(nombre) {
+  await sbFetch('DELETE', 'subcategorias', null, {'nombre': 'eq.' + nombre});
+  // Move its cats to Otras
+  const url = new URL(SUPABASE_URL + '/rest/v1/categorias');
+  url.searchParams.set('subcategoria', 'eq.' + nombre);
+  await fetch(url, {
+    method: 'PATCH',
+    headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+    body: JSON.stringify({subcategoria: 'Otras'})
+  });
 }
 async function deleteCat(nombre) {
   await sbFetch('DELETE', 'categorias', null, {'nombre': 'eq.' + nombre});
@@ -307,7 +335,7 @@ function buildCarga() {
     <label>Categoría</label>
     <select id="f-cat">
       <option value="">— Seleccionar —</option>`;
-  cats.forEach(c => { h += `<option value="${c}" ${f.categoria===c?'selected':''}>${c} · ${getSub(c)}</option>`; });
+  [...cats].sort((a,b)=>(getSub(a)+a).localeCompare(getSub(b)+b,'es')).forEach(c => { h += `<option value="${c}" ${f.categoria===c?'selected':''}>${getSub(c)} · ${c}</option>`; });
   h += `</select>
     <div class="grid2">
       <div><label>Medio de pago</label><select id="f-medio">${MEDIOS.map(m=>`<option ${f.medio===m?'selected':''}>${m}</option>`).join('')}</select></div>
@@ -550,29 +578,61 @@ async function accionGuardarPres(){
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 function buildConfig(){
+  // Subcategory management card
   let h=`<div class="card"><div class="section-title">Subcategorías</div>
-    <table><thead><tr><th>Subcategoría</th><th>Categorías incluidas</th></tr></thead><tbody>`;
-  Object.entries(SUBCATS).forEach(([s,cs])=>{h+=`<tr><td style="font-weight:500">${s}</td><td style="font-size:12px;color:var(--text2)">${cs.join(', ')}</td></tr>`;});
-  h+=`<tr><td style="font-weight:500">Otras</td><td style="font-size:12px;color:var(--text2)">Categorías sin subcategoría asignada</td></tr>`;
-  h+=`</tbody></table></div>
-  <div class="card"><div class="section-title">Gestión de categorías</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input type="text" id="new-cat" placeholder="Nueva categoría..." style="flex:1">
-      <button class="btn btn-primary" onclick="accionAgregarCat()">Agregar</button>
+      <input type="text" id="new-subcat" placeholder="Nueva subcategoría..." style="flex:1">
+      <button class="btn btn-primary" onclick="accionAgregarSubcat()">Agregar</button>
+    </div>
+    <table><thead><tr><th>Subcategoría</th><th>Categorías incluidas</th><th></th></tr></thead><tbody>`;
+  [...subcats_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
+    const cs = SUBCATS[s] || [];
+    h+=`<tr><td style="font-weight:500">${s}</td>
+      <td style="font-size:12px;color:var(--text2)">${cs.length>0?cs.join(', '):'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="accionEliminarSubcat('${escQ(s)}')">Eliminar</button></td></tr>`;
+  });
+  h+=`<tr><td style="font-weight:500;color:var(--text2)">Otras</td><td style="font-size:12px;color:var(--text2)">Categorías sin subcategoría</td><td></td></tr>`;
+  h+=`</tbody></table></div>`;
+
+  // Category management card
+  h+=`<div class="card"><div class="section-title">Categorías</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:14px;align-items:end">
+      <div><label>Nombre</label><input type="text" id="new-cat" placeholder="Nueva categoría..."></div>
+      <div><label>Subcategoría</label>
+        <select id="new-cat-sub">
+          <option value="Otras">— Sin subcategoría —</option>`;
+  [...subcats_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
+    h+=`<option value="${s}">${s}</option>`;
+  });
+  h+=`</select></div>
+      <button class="btn btn-primary" style="height:38px" onclick="accionAgregarCat()">Agregar</button>
     </div>
     <table><thead><tr><th>Categoría</th><th>Subcategoría</th><th></th></tr></thead><tbody>`;
-  cats.forEach(cat=>{
+  [...cats].sort((a,b)=>(getSub(a)+a).localeCompare(getSub(b)+b,'es')).forEach(cat=>{
     h+=`<tr><td>${cat}</td><td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="accionEliminarCat('${escQ(cat)}')">Eliminar</button></td></tr>`;
   });
   h+=`</tbody></table></div>`;
   return h;
 }
+async function accionAgregarSubcat(){
+  const v=document.getElementById('new-subcat')?.value.trim();
+  if(!v){showAlert('Ingresá un nombre.','err');return;}
+  if(subcats_list.includes(v)){showAlert('Ya existe.','err');return;}
+  try{await saveSubcat(v);await loadAll();showAlert(`Subcategoría "${v}" agregada.`);}
+  catch(e){showAlert('Error: '+e.message,'err');}
+}
+async function accionEliminarSubcat(sub){
+  if(!confirm(`¿Eliminar la subcategoría "${sub}"? Las categorías asignadas quedarán en "Otras".`))return;
+  try{await deleteSubcat(sub);await loadAll();}
+  catch(e){showAlert('Error: '+e.message,'err');}
+}
 async function accionAgregarCat(){
   const v=document.getElementById('new-cat')?.value.trim();
+  const sub=document.getElementById('new-cat-sub')?.value||'Otras';
   if(!v){showAlert('Ingresá un nombre.','err');return;}
   if(cats.includes(v)){showAlert('Ya existe.','err');return;}
-  try{await saveCat(v);await loadAll();showAlert(`Categoría "${v}" agregada.`);}
+  try{await saveCat(v,sub);await loadAll();showAlert(`Categoría "${v}" agregada en ${sub}.`);}
   catch(e){showAlert('Error: '+e.message,'err');}
 }
 async function accionEliminarCat(cat){
