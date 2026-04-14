@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gastos Casa</title>
-<!-- v9 -->
+<!-- v10 -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -598,7 +598,6 @@ function buildConfig(){
   // Category management card
   h+=`<div class="card"><div class="section-title">Tipos <span style="font-size:10px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">· doble click para renombrar</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:14px;align-items:end">
-      <div><label>Nombre</label><input type="text" id="new-cat" placeholder="Nuevo tipo..."></div>
       <div><label>Rubro</label>
         <select id="new-tipo-rubro">
           <option value="Otros">Otros</option>`;
@@ -606,12 +605,13 @@ function buildConfig(){
     h+=`<option value="${s}">${s}</option>`;
   });
   h+=`</select></div>
+      <div><label>Nombre</label><input type="text" id="new-cat" placeholder="Nuevo tipo..."></div>
       <button class="btn btn-primary" style="height:38px" onclick="accionAgregarCat()">Agregar</button>
     </div>
-    <table><thead><tr><th>Tipo</th><th>Rubro</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th>Rubro</th><th>Tipo</th><th></th></tr></thead><tbody>`;
   [...cats].sort((a,b)=>(getSub(a)+a).localeCompare(getSub(b)+b,'es')).forEach(cat=>{
-    h+=`<tr><td style="cursor:pointer" title="Doble click para renombrar" ondblclick="inlineRename(this,'tipo','${escQ(cat)}')">${cat}</td>
-      <td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
+    h+=`<tr><td style="font-size:13px;color:var(--text2)">${getSub(cat)}</td>
+      <td style="cursor:pointer" title="Doble click para renombrar" ondblclick="inlineRename(this,'tipo','${escQ(cat)}')">${cat}</td>
       <td><button class="btn btn-danger btn-sm" onclick="accionEliminarCat('${escQ(cat)}')">Eliminar</button></td></tr>`;
   });
   h+=`</tbody></table></div>`;
