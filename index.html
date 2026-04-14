@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gastos Casa</title>
-<!-- v6 -->
+<!-- v8 -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -580,7 +580,7 @@ async function accionGuardarPres(){
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 function buildConfig(){
   // Subcategory management card
-  let h=`<div class="card"><div class="section-title">Rubros</div>
+  let h=`<div class="card"><div class="section-title">Rubros <span style="font-size:10px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">· doble click para renombrar</span></div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <input type="text" id="new-rubro" placeholder="Nuevo rubro..." style="flex:1">
       <button class="btn btn-primary" onclick="accionAgregarRubro()">Agregar</button>
@@ -588,7 +588,7 @@ function buildConfig(){
     <table><thead><tr><th>Rubro</th><th>Tipos incluidos</th><th></th></tr></thead><tbody>`;
   [...rubros_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
     const cs = RUBROS[s] || [];
-    h+=`<tr><td style="font-weight:500">${s}</td>
+    h+=`<tr><td style="font-weight:500;cursor:pointer" title="Doble click para renombrar" ondblclick="inlineRename(this,'rubro','${escQ(s)}')">${s}</td>
       <td style="font-size:12px;color:var(--text2)">${cs.length>0?cs.join(', '):'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="accionEliminarRubro('${escQ(s)}')">Eliminar</button></td></tr>`;
   });
@@ -596,12 +596,11 @@ function buildConfig(){
   h+=`</tbody></table></div>`;
 
   // Category management card
-  h+=`<div class="card"><div class="section-title">Tipos</div>
+  h+=`<div class="card"><div class="section-title">Tipos <span style="font-size:10px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">· doble click para renombrar</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:14px;align-items:end">
       <div><label>Nombre</label><input type="text" id="new-cat" placeholder="Nuevo tipo..."></div>
       <div><label>Rubro</label>
         <select id="new-tipo-rubro">
-          <option value="">— Elegir rubro —</option>
           <option value="Otros">Otros</option>
           <option value="Otras">— Sin subcategoría —</option>`;
   [...rubros_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
@@ -612,7 +611,8 @@ function buildConfig(){
     </div>
     <table><thead><tr><th>Tipo</th><th>Rubro</th><th></th></tr></thead><tbody>`;
   [...cats].sort((a,b)=>(getSub(a)+a).localeCompare(getSub(b)+b,'es')).forEach(cat=>{
-    h+=`<tr><td>${cat}</td><td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
+    h+=`<tr><td style="cursor:pointer" title="Doble click para renombrar" ondblclick="inlineRename(this,'tipo','${escQ(cat)}')">${cat}</td>
+      <td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="accionEliminarCat('${escQ(cat)}')">Eliminar</button></td></tr>`;
   });
   h+=`</tbody></table></div>`;
@@ -646,6 +646,7 @@ async function accionEliminarCat(cat){
   
   // Create modal
   const overlay = document.createElement('div');
+  overlay.id = 'modal-eliminar-tipo';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML = `
     <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:400px;max-width:90vw;border:1px solid var(--border)">
@@ -657,7 +658,7 @@ async function accionEliminarCat(cat){
         ${tiposOpts}
       </select>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('div[style*=fixed]')?.remove()">Cancelar</button>
+        <button class="btn" onclick="document.getElementById('modal-eliminar-tipo')?.remove()">Cancelar</button>
         <button class="btn btn-danger" onclick="confirmarEliminarCat('${cat.replace(/'/g,"\'")}')">Eliminar y reasignar</button>
       </div>
     </div>`;
@@ -667,7 +668,7 @@ async function confirmarEliminarCat(cat){
   const destino = document.getElementById('reassign-tipo')?.value;
   if(!destino){showAlert('Elegí un tipo destino para los gastos.','err');return;}
   // Remove modal
-  document.querySelector('div[style*="position:fixed"]')?.remove();
+  document.getElementById('modal-eliminar-tipo')?.remove();
   try {
     // Reassign all gastos from old cat to new cat
     const url = new URL(SUPABASE_URL + '/rest/v1/gastos');
@@ -688,6 +689,79 @@ async function confirmarEliminarCat(cat){
     await loadAll();
     showAlert(`Tipo "${cat}" eliminado. Gastos reasignados a "${destino}".`);
   } catch(e){showAlert('Error: '+e.message,'err');}
+}
+
+
+// ─── RENOMBRAR INLINE ─────────────────────────────────────────────────────────
+window.inlineRename = function(td, kind, oldName) {
+  if(td.querySelector('input')) return; // already editing
+  const orig = td.textContent.trim();
+  td.innerHTML = '';
+  const input = document.createElement('input');
+  input.value = orig;
+  input.style.cssText = 'width:100%;font-size:14px;font-weight:500;padding:2px 6px;border-radius:4px;border:1px solid var(--accent);background:var(--surface);color:var(--text)';
+  td.appendChild(input);
+  input.focus();
+  input.select();
+
+  async function commit() {
+    const newName = input.value.trim();
+    if(!newName || newName === orig) { renderTab(); return; }
+    try {
+      if(kind === 'rubro') await renombrarRubro(orig, newName);
+      else await renombrarTipo(orig, newName);
+      await loadAll();
+      showAlert(`Renombrado "${orig}" → "${newName}"`);
+    } catch(e) {
+      showAlert('Error al renombrar: ' + e.message, 'err');
+      renderTab();
+    }
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter') { input.blur(); }
+    if(e.key === 'Escape') { renderTab(); }
+  });
+};
+
+async function renombrarRubro(oldName, newName) {
+  if(rubros_list.includes(newName)) throw new Error('Ese rubro ya existe.');
+  // 1. Insert new rubro
+  await saveRubro(newName);
+  // 2. Update all categorias with old rubro to new rubro
+  const urlC = new URL(SUPABASE_URL + '/rest/v1/categorias');
+  urlC.searchParams.set('subcategoria', 'eq.' + oldName);
+  await fetch(urlC, {
+    method: 'PATCH',
+    headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+    body: JSON.stringify({subcategoria: newName})
+  });
+  // 3. Delete old rubro
+  await sbFetch('DELETE', 'subcategorias', null, {'nombre': 'eq.' + oldName});
+}
+
+async function renombrarTipo(oldName, newName) {
+  if(cats.includes(newName)) throw new Error('Ese tipo ya existe.');
+  // 1. Insert new tipo with same rubro
+  const rubroActual = getSub(oldName);
+  await saveCat(newName, rubroActual);
+  // 2. Reassign all gastos
+  const urlG = new URL(SUPABASE_URL + '/rest/v1/gastos');
+  urlG.searchParams.set('categoria', 'eq.' + oldName);
+  await fetch(urlG, {
+    method: 'PATCH',
+    headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+    body: JSON.stringify({categoria: newName})
+  });
+  // 3. Reassign all presupuestos
+  const urlP = new URL(SUPABASE_URL + '/rest/v1/presupuestos');
+  urlP.searchParams.set('categoria', 'eq.' + oldName);
+  const pRows = await sbFetch('GET', 'presupuestos', null, {'categoria': 'eq.' + oldName});
+  for(const row of (pRows||[])) {
+    await savePres(row.mes, newName, row.monto);
+  }
+  // 4. Delete old tipo
+  await deleteCat(oldName);
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
