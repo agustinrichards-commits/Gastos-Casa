@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gastos Casa</title>
-<!-- v8 -->
+<!-- v9 -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -601,8 +601,7 @@ function buildConfig(){
       <div><label>Nombre</label><input type="text" id="new-cat" placeholder="Nuevo tipo..."></div>
       <div><label>Rubro</label>
         <select id="new-tipo-rubro">
-          <option value="Otros">Otros</option>
-          <option value="Otras">— Sin subcategoría —</option>`;
+          <option value="Otros">Otros</option>`;
   [...rubros_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
     h+=`<option value="${s}">${s}</option>`;
   });
