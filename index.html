@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gastos Casa</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -184,23 +184,37 @@ function showAlert(text,type='ok') {
 }
 function setSync(txt) { document.getElementById('header-sync').textContent=txt; }
 
-// ─── SUPABASE ─────────────────────────────────────────────────────────────────
-async function initSupabase() {
-  try {
-    if (!window.supabase) throw new Error("Libreria Supabase no cargo");
-    const _sbc = (window.supabase || {}); sb = (_sbc.createClient || _sbc.default && _sbc.default.createClient)(SUPABASE_URL, SUPABASE_KEY);
-  } catch(e) {
-    console.error("Supabase init error:", e);
+// ─── SUPABASE (native fetch, no lib needed) ──────────────────────────────────
+async function initSupabase() { sb = true; }
+
+async function sbFetch(method, table, body, params) {
+  const url = new URL(SUPABASE_URL + '/rest/v1/' + table);
+  if (params) Object.entries(params).forEach(([k,v]) => url.searchParams.set(k,v));
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : (method === 'PATCH' ? 'return=representation' : '')
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
   }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
 }
 
 async function loadAll() {
   setSync('Cargando...');
   try {
-    const [{ data: g }, { data: p }, { data: c }] = await Promise.all([
-      sb.from('gastos').select('*').order('fecha', { ascending: false }),
-      sb.from('presupuestos').select('*'),
-      sb.from('categorias').select('*').order('nombre')
+    const [g, p, c] = await Promise.all([
+      sbFetch('GET', 'gastos', null, {'order': 'fecha.desc'}),
+      sbFetch('GET', 'presupuestos', null, {}),
+      sbFetch('GET', 'categorias', null, {'order': 'nombre.asc'})
     ]);
     gastos = g || [];
     presupuestos = {};
@@ -212,32 +226,39 @@ async function loadAll() {
     setSync('Sincronizado · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
   } catch(e) {
     setSync('Error de conexión');
-    showAlert('No se pudo conectar a la base de datos. Verificá la configuración de Supabase.','err');
+    showAlert('Error: ' + e.message,'err');
   }
   renderTab();
 }
 
 async function saveGasto(g) {
-  const { error } = await sb.from('gastos').insert([g]);
-  if(error) throw error;
+  await sbFetch('POST', 'gastos', g);
 }
 async function deleteGasto(id) {
-  const { error } = await sb.from('gastos').delete().eq('id', id);
-  if(error) throw error;
+  await sbFetch('DELETE', 'gastos', null, {'id': 'eq.' + id});
 }
 async function savePres(mes, cat, monto) {
-  const { error } = await sb.from('presupuestos').upsert({ mes, categoria: cat, monto }, { onConflict: 'mes,categoria' });
-  if(error) throw error;
+  const url = new URL(SUPABASE_URL + '/rest/v1/presupuestos');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates'
+    },
+    body: JSON.stringify({ mes, categoria: cat, monto })
+  });
+  if (!res.ok) throw new Error(await res.text());
 }
 async function deletePres(mes, cat) {
-  await sb.from('presupuestos').delete().eq('mes', mes).eq('categoria', cat);
+  try { await sbFetch('DELETE', 'presupuestos', null, {'mes': 'eq.' + mes, 'categoria': 'eq.' + cat}); } catch(e) {}
 }
 async function saveCat(nombre) {
-  const { error } = await sb.from('categorias').insert([{ nombre }]);
-  if(error) throw error;
+  await sbFetch('POST', 'categorias', { nombre });
 }
 async function deleteCat(nombre) {
-  await sb.from('categorias').delete().eq('nombre', nombre);
+  await sbFetch('DELETE', 'categorias', null, {'nombre': 'eq.' + nombre});
 }
 
 // ─── AUTH LOCAL ───────────────────────────────────────────────────────────────
