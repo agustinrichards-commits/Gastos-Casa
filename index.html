@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gastos Casa</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -186,7 +186,12 @@ function setSync(txt) { document.getElementById('header-sync').textContent=txt; 
 
 // ─── SUPABASE ─────────────────────────────────────────────────────────────────
 async function initSupabase() {
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  try {
+    if (!window.supabase) throw new Error("Libreria Supabase no cargo");
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch(e) {
+    console.error("Supabase init error:", e);
+  }
 }
 
 async function loadAll() {
