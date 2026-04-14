@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gastos Casa</title>
-<!-- v4 -->
+<!-- v5 -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -270,7 +270,7 @@ async function deletePres(mes, cat) {
   try { await sbFetch('DELETE', 'presupuestos', null, {'mes': 'eq.' + mes, 'categoria': 'eq.' + cat}); } catch(e) {}
 }
 async function saveCat(nombre, subcategoria) {
-  await sbFetch('POST', 'categorias', { nombre, subcategoria: subcategoria || 'Otras' });
+  await sbFetch('POST', 'categorias', { nombre, subcategoria });
 }
 async function saveSubcat(nombre) {
   await sbFetch('POST', 'subcategorias', { nombre });
@@ -592,7 +592,6 @@ function buildConfig(){
       <td style="font-size:12px;color:var(--text2)">${cs.length>0?cs.join(', '):'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="accionEliminarSubcat('${escQ(s)}')">Eliminar</button></td></tr>`;
   });
-  h+=`<tr><td style="font-weight:500;color:var(--text2)">Otras</td><td style="font-size:12px;color:var(--text2)">Categorías sin subcategoría</td><td></td></tr>`;
   h+=`</tbody></table></div>`;
 
   // Category management card
@@ -601,6 +600,7 @@ function buildConfig(){
       <div><label>Nombre</label><input type="text" id="new-cat" placeholder="Nueva categoría..."></div>
       <div><label>Subcategoría</label>
         <select id="new-cat-sub">
+          <option value="">— Elegir subcategoría —</option>
           <option value="Otras">— Sin subcategoría —</option>`;
   [...subcats_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
     h+=`<option value="${s}">${s}</option>`;
@@ -630,9 +630,10 @@ async function accionEliminarSubcat(sub){
 }
 async function accionAgregarCat(){
   const v=document.getElementById('new-cat')?.value.trim();
-  const sub=document.getElementById('new-cat-sub')?.value||'Otras';
-  if(!v){showAlert('Ingresá un nombre.','err');return;}
-  if(cats.includes(v)){showAlert('Ya existe.','err');return;}
+  const sub=document.getElementById('new-cat-sub')?.value;
+  if(!v){showAlert('Ingresá un nombre de categoría.','err');return;}
+  if(!sub){showAlert('Elegí una subcategoría.','err');return;}
+  if(cats.includes(v)){showAlert('Esa categoría ya existe.','err');return;}
   try{await saveCat(v,sub);await loadAll();showAlert(`Categoría "${v}" agregada en ${sub}.`);}
   catch(e){showAlert('Error: '+e.message,'err');}
 }
