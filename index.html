@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gastos Casa</title>
-<!-- v5 -->
+<!-- v6 -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -127,7 +127,7 @@ select option { font-size: 13px; }
     <button onclick="setTab('reporte')" id="tab-reporte">Reporte</button>
     <button onclick="setTab('grafico')" id="tab-grafico">Evolución</button>
     <button onclick="setTab('presupuesto')" id="tab-presupuesto">Presupuesto</button>
-    <button onclick="setTab('config')" id="tab-config">Categorías</button>
+    <button onclick="setTab('config')" id="tab-config">Tipos</button>
   </nav>
   <div id="alert-box"></div>
   <div id="content"></div>
@@ -140,7 +140,7 @@ const SUPABASE_URL = 'https://fovfwbpczwycfxxeolfv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdmZ3YnBjend5Y2Z4eGVvbGZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwOTI4MTMsImV4cCI6MjA5MTY2ODgxM30._sSxV5fOisObcw69iltLqtAy5FkhyCiAB0W6HgsfKzg';
 
 // ─── CONSTANTES ──────────────────────────────────────────────────────────────
-let SUBCATS = {
+let RUBROS = {
   'Alimentación':    ['Supermercado','Gastronomia'],
   'Hogar':           ['Luz','Gas','Agua','ABL','Servicios del Hogar','Mejoras Casa','Mantenimiento','Mobiliario'],
   'Familia':         ['Educacion','Ropa','Regalos','Familia Extendida','Empleadas'],
@@ -149,7 +149,7 @@ let SUBCATS = {
   'Entretenimiento': ['Entretenimiento','Viajes'],
   'Tecnología':      ['Tecnologia','Telefono y Comunicaciones']
 };
-let subcats_list = Object.keys(SUBCATS);
+let rubros_list = Object.keys(RUBROS);
 const DEFAULT_CATS = [
   'Educacion','Supermercado','Entretenimiento','Gastronomia','Viajes','Movilidad','Nafta',
   'Seguros','Luz','Gas','Agua','Servicios del Hogar','Gastos Auto','Patente','Empleadas',
@@ -178,7 +178,7 @@ let state = {
 function today() { return new Date().toISOString().slice(0,10); }
 function fmt(n) { return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0); }
 function monthLabel(m) { const [y,mo]=m.split('-'); return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+mo-1]+' '+y; }
-function getSub(cat) { for(const [s,cs] of Object.entries(SUBCATS)) if(cs.includes(cat)) return s; return 'Otras'; }
+function getSub(cat) { for(const [s,cs] of Object.entries(RUBROS)) if(cs.includes(cat)) return s; return 'Otras'; }
 function showAlert(text,type='ok') {
   const el=document.getElementById('alert-box');
   el.innerHTML=`<div class="alert alert-${type}">${text}</div>`;
@@ -227,17 +227,17 @@ async function loadAll() {
     });
     if(c && c.length>0) {
       cats = c.map(r=>r.nombre);
-      // Rebuild SUBCATS from DB data
-      SUBCATS = {};
+      // Rebuild RUBROS from DB data
+      RUBROS = {};
       c.forEach(r => {
         const sub = r.subcategoria || 'Otras';
         if(sub !== 'Otras') {
-          if(!SUBCATS[sub]) SUBCATS[sub] = [];
-          SUBCATS[sub].push(r.nombre);
+          if(!RUBROS[sub]) RUBROS[sub] = [];
+          RUBROS[sub].push(r.nombre);
         }
       });
     }
-    if(sc && sc.length>0) subcats_list = sc.map(r=>r.nombre);
+    if(sc && sc.length>0) rubros_list = sc.map(r=>r.nombre);
     setSync('Sincronizado · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
   } catch(e) {
     setSync('Error de conexión');
@@ -272,10 +272,10 @@ async function deletePres(mes, cat) {
 async function saveCat(nombre, subcategoria) {
   await sbFetch('POST', 'categorias', { nombre, subcategoria });
 }
-async function saveSubcat(nombre) {
+async function saveRubro(nombre) {
   await sbFetch('POST', 'subcategorias', { nombre });
 }
-async function deleteSubcat(nombre) {
+async function deleteRubro(nombre) {
   await sbFetch('DELETE', 'subcategorias', null, {'nombre': 'eq.' + nombre});
   // Move its cats to Otras
   const url = new URL(SUPABASE_URL + '/rest/v1/categorias');
@@ -333,7 +333,7 @@ function buildCarga() {
       <div><label>Monto ($)</label><input type="number" id="f-monto" value="${f.monto}" placeholder="0" min="0" step="1" class="mono"></div>
       <div><label>Fecha</label><input type="date" id="f-fecha" value="${f.fecha}"></div>
     </div>
-    <label>Categoría</label>
+    <label>Tipo</label>
     <select id="f-cat">
       <option value="">— Seleccionar —</option>`;
   [...cats].sort((a,b)=>(getSub(a)+a).localeCompare(getSub(b)+b,'es')).forEach(c => { h += `<option value="${c}" ${f.categoria===c?'selected':''}>${getSub(c)} · ${c}</option>`; });
@@ -350,7 +350,7 @@ function buildCarga() {
   const recientes = gastos.slice(0,10);
   if(recientes.length>0){
     h += `<div class="card"><div class="section-title">Últimos gastos</div><table>
-      <thead><tr><th>Fecha</th><th>Categoría</th><th>Nota</th><th>Medio</th><th style="text-align:right">Monto</th><th>Usuario</th><th></th></tr></thead><tbody>`;
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Nota</th><th>Medio</th><th style="text-align:right">Monto</th><th>Usuario</th><th></th></tr></thead><tbody>`;
     recientes.forEach(g => {
       h += `<tr><td class="mono" style="font-size:12px">${g.fecha}</td>
         <td>${g.categoria}<span class="sub-badge">${getSub(g.categoria)}</span></td>
@@ -371,7 +371,7 @@ async function accionGuardarGasto() {
   const medio = document.getElementById('f-medio')?.value;
   const fecha = document.getElementById('f-fecha')?.value;
   const nota = document.getElementById('f-nota')?.value;
-  if(!monto||monto<=0||!cat) { showAlert('Completá monto y categoría.','err'); return; }
+  if(!monto||monto<=0||!cat) { showAlert('Completá monto y tipo.','err'); return; }
   const gasto = { usuario: currentUser, monto, categoria: cat, medio, fecha, nota };
   try {
     await saveGasto(gasto);
@@ -403,7 +403,7 @@ function buildReporte() {
       <button class="btn ${reportMode==='mes'?'btn-primary':''}" onclick="st('reportMode','mes')">Por mes</button>
       <button class="btn ${reportMode==='periodo'?'btn-primary':''}" onclick="st('reportMode','periodo')">Período libre</button>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-        <span style="font-size:12px;color:var(--text2)">Por subcategoría</span>
+        <span style="font-size:12px;color:var(--text2)">Por rubro</span>
         <button class="tgl ${subMode?'on':''}" onclick="stb('subMode')">${subMode?'Sí':'No'}</button>
       </div>
     </div>`;
@@ -430,8 +430,8 @@ function buildReporte() {
     list.forEach(g=>{ byRubro[g.categoria]=(byRubro[g.categoria]||0)+Number(g.monto); });
     const sorted = Object.entries(byRubro).sort((a,b)=>b[1]-a[1]);
     const totalBud = Object.values(budget).reduce((s,v)=>s+Number(v),0);
-    h += `<div class="card"><div class="section-title">Por categoría</div><table>
-      <thead><tr><th>Categoría</th><th>Subcategoría</th><th style="text-align:right">Gasto</th><th style="text-align:right">Presupuesto</th><th style="min-width:90px">Avance</th></tr></thead><tbody>`;
+    h += `<div class="card"><div class="section-title">Por tipo</div><table>
+      <thead><tr><th>Tipo</th><th>Rubro</th><th style="text-align:right">Gasto</th><th style="text-align:right">Presupuesto</th><th style="min-width:90px">Avance</th></tr></thead><tbody>`;
     sorted.forEach(([cat,monto])=>{
       const b=Number(budget[cat]||0);
       const pct=b>0?Math.min(120,Math.round(monto/b*100)):null;
@@ -456,8 +456,8 @@ function buildReporte() {
     list.forEach(g=>{ const s=getSub(g.categoria); bySub[s]=(bySub[s]||0)+Number(g.monto); });
     cats.forEach(c=>{ if(budget[c]){ const s=getSub(c); budBySub[s]=(budBySub[s]||0)+Number(budget[c]); }});
     const sorted=Object.entries(bySub).sort((a,b)=>b[1]-a[1]);
-    h+=`<div class="card"><div class="section-title">Por subcategoría</div><table>
-      <thead><tr><th>Subcategoría</th><th style="text-align:right">Gasto</th><th style="text-align:right">Presupuesto</th><th style="min-width:90px">Avance</th></tr></thead><tbody>`;
+    h+=`<div class="card"><div class="section-title">Por rubro</div><table>
+      <thead><tr><th>Rubro</th><th style="text-align:right">Gasto</th><th style="text-align:right">Presupuesto</th><th style="min-width:90px">Avance</th></tr></thead><tbody>`;
     sorted.forEach(([sub,monto])=>{
       const b=Number(budBySub[sub]||0);
       const pct=b>0?Math.min(120,Math.round(monto/b*100)):null;
@@ -470,7 +470,7 @@ function buildReporte() {
     h+=`</tbody></table></div>`;
   }
   h+=`<div class="card"><div class="section-title">Todas las transacciones</div><table>
-    <thead><tr><th>Fecha</th><th>Categoría</th><th>Nota</th><th>Medio</th><th style="text-align:right">Monto</th><th>Usuario</th></tr></thead><tbody>`;
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Nota</th><th>Medio</th><th style="text-align:right">Monto</th><th>Usuario</th></tr></thead><tbody>`;
   [...list].sort((a,b)=>b.fecha?.localeCompare(a.fecha)).forEach(g=>{
     h+=`<tr><td class="mono" style="font-size:12px">${g.fecha}</td><td>${g.categoria}</td>
       <td style="color:var(--text2);font-size:12px">${g.nota||''}</td>
@@ -489,14 +489,14 @@ function buildGrafico() {
   let h=`<div class="card">
     <div class="toggle-row">
       <span style="font-size:12px;color:var(--text2)">Agrupar por:</span>
-      <button class="tgl ${chartView==='sub'?'on':''}" onclick="stChart('sub')">Subcategoría</button>
-      <button class="tgl ${chartView==='cat'?'on':''}" onclick="stChart('cat')">Categoría</button>
+      <button class="tgl ${chartView==='sub'?'on':''}" onclick="stChart('sub')">Rubro</button>
+      <button class="tgl ${chartView==='cat'?'on':''}" onclick="stChart('cat')">Tipo</button>
       <button class="tgl ${chartView==='usuario'?'on':''}" onclick="stChart('usuario')">Usuario</button>
     </div>
     <div class="toggle-row">
       <span style="font-size:12px;color:var(--text2)">Filtrar:</span>
       <button class="tgl ${chartRubro==='TOTAL'?'on':''}" onclick="stRubro('TOTAL')">Total</button>`;
-  if(chartView==='sub') Object.keys(SUBCATS).concat(['Otras']).forEach(s=>{h+=`<button class="tgl ${chartRubro===s?'on':''}" onclick="stRubro('${s}')">${s}</button>`;});
+  if(chartView==='sub') Object.keys(RUBROS).concat(['Otras']).forEach(s=>{h+=`<button class="tgl ${chartRubro===s?'on':''}" onclick="stRubro('${s}')">${s}</button>`;});
   else if(chartView==='cat') cats.forEach(c=>{h+=`<button class="tgl ${chartRubro===c?'on':''}" onclick="stRubro('${escQ(c)}')">${c}</button>`;});
   h+=`</div></div>`;
   if(allMonths.length===0) return h+`<div class="empty">Sin datos para graficar.</div>`;
@@ -522,7 +522,7 @@ function renderChart() {
     const filterFn = chartView==='sub'?(g=>getSub(g.categoria)===chartRubro):(g=>g.categoria===chartRubro);
     datasets.push({label:chartRubro,data:allMonths.map(m=>monthTotal(m,filterFn)),backgroundColor:'rgba(45,90,61,0.15)',borderColor:'#2d5a3d',borderWidth:2,fill:true,tension:0.3,pointRadius:4,pointBackgroundColor:'#2d5a3d'});
   } else {
-    const groups = chartView==='sub'?[...Object.keys(SUBCATS),'Otras']:cats;
+    const groups = chartView==='sub'?[...Object.keys(RUBROS),'Otras']:cats;
     groups.forEach((g,i)=>{
       const filterFn = chartView==='sub'?(x=>getSub(x.categoria)===g):(x=>x.categoria===g);
       const data=allMonths.map(m=>monthTotal(m,filterFn));
@@ -552,8 +552,8 @@ function buildPresupuesto() {
   let h=`<div class="card">
     <div class="section-title">Presupuesto mensual</div>
     <div style="margin-bottom:14px"><label>Mes</label><input type="month" value="${state.budgetMonth}" onchange="st('budgetMonth',this.value)" style="width:180px"></div>
-    <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Ingresá el presupuesto para cada categoría. Se usa como referencia en el reporte del mismo mes.</p>
-    <table><thead><tr><th>Categoría</th><th>Subcategoría</th><th style="text-align:right;width:160px">Presupuesto mensual ($)</th></tr></thead><tbody>`;
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Ingresá el presupuesto para cada tipo. Se usa como referencia en el reporte del mismo mes.</p>
+    <table><thead><tr><th>Tipo</th><th>Rubro</th><th style="text-align:right;width:160px">Presupuesto mensual ($)</th></tr></thead><tbody>`;
   cats.forEach(cat=>{
     const sid='bud_'+cat.replace(/[^a-z0-9]/gi,'_');
     h+=`<tr><td>${cat}</td><td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
@@ -580,35 +580,37 @@ async function accionGuardarPres(){
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 function buildConfig(){
   // Subcategory management card
-  let h=`<div class="card"><div class="section-title">Subcategorías</div>
+  let h=`<div class="card"><div class="section-title">Rubros</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input type="text" id="new-subcat" placeholder="Nueva subcategoría..." style="flex:1">
-      <button class="btn btn-primary" onclick="accionAgregarSubcat()">Agregar</button>
+      <input type="text" id="new-rubro" placeholder="Nuevo rubro..." style="flex:1">
+      <button class="btn btn-primary" onclick="accionAgregarRubro()">Agregar</button>
     </div>
-    <table><thead><tr><th>Subcategoría</th><th>Categorías incluidas</th><th></th></tr></thead><tbody>`;
-  [...subcats_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
-    const cs = SUBCATS[s] || [];
+    <table><thead><tr><th>Rubro</th><th>Tipos incluidos</th><th></th></tr></thead><tbody>`;
+  [...rubros_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
+    const cs = RUBROS[s] || [];
     h+=`<tr><td style="font-weight:500">${s}</td>
       <td style="font-size:12px;color:var(--text2)">${cs.length>0?cs.join(', '):'—'}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="accionEliminarSubcat('${escQ(s)}')">Eliminar</button></td></tr>`;
+      <td><button class="btn btn-danger btn-sm" onclick="accionEliminarRubro('${escQ(s)}')">Eliminar</button></td></tr>`;
   });
+  h+=`<tr><td style="font-weight:500;color:var(--text2)">Otros</td><td style="font-size:12px;color:var(--text2)">Tipos sin rubro asignado</td><td></td></tr>`;
   h+=`</tbody></table></div>`;
 
   // Category management card
-  h+=`<div class="card"><div class="section-title">Categorías</div>
+  h+=`<div class="card"><div class="section-title">Tipos</div>
     <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:14px;align-items:end">
-      <div><label>Nombre</label><input type="text" id="new-cat" placeholder="Nueva categoría..."></div>
-      <div><label>Subcategoría</label>
-        <select id="new-cat-sub">
-          <option value="">— Elegir subcategoría —</option>
+      <div><label>Nombre</label><input type="text" id="new-cat" placeholder="Nuevo tipo..."></div>
+      <div><label>Rubro</label>
+        <select id="new-tipo-rubro">
+          <option value="">— Elegir rubro —</option>
+          <option value="Otros">Otros</option>
           <option value="Otras">— Sin subcategoría —</option>`;
-  [...subcats_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
+  [...rubros_list].sort((a,b)=>a.localeCompare(b,'es')).forEach(s=>{
     h+=`<option value="${s}">${s}</option>`;
   });
   h+=`</select></div>
       <button class="btn btn-primary" style="height:38px" onclick="accionAgregarCat()">Agregar</button>
     </div>
-    <table><thead><tr><th>Categoría</th><th>Subcategoría</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th>Tipo</th><th>Rubro</th><th></th></tr></thead><tbody>`;
   [...cats].sort((a,b)=>(getSub(a)+a).localeCompare(getSub(b)+b,'es')).forEach(cat=>{
     h+=`<tr><td>${cat}</td><td style="font-size:11px;color:var(--text2)">${getSub(cat)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="accionEliminarCat('${escQ(cat)}')">Eliminar</button></td></tr>`;
@@ -616,31 +618,76 @@ function buildConfig(){
   h+=`</tbody></table></div>`;
   return h;
 }
-async function accionAgregarSubcat(){
-  const v=document.getElementById('new-subcat')?.value.trim();
+async function accionAgregarRubro(){
+  const v=document.getElementById('new-rubro')?.value.trim();
   if(!v){showAlert('Ingresá un nombre.','err');return;}
-  if(subcats_list.includes(v)){showAlert('Ya existe.','err');return;}
-  try{await saveSubcat(v);await loadAll();showAlert(`Subcategoría "${v}" agregada.`);}
+  if(rubros_list.includes(v)){showAlert('Ya existe.','err');return;}
+  try{await saveRubro(v);await loadAll();showAlert(`Rubro "${v}" agregada.`);}
   catch(e){showAlert('Error: '+e.message,'err');}
 }
-async function accionEliminarSubcat(sub){
-  if(!confirm(`¿Eliminar la subcategoría "${sub}"? Las categorías asignadas quedarán en "Otras".`))return;
-  try{await deleteSubcat(sub);await loadAll();}
+async function accionEliminarRubro(sub){
+  if(!confirm(`¿Eliminar el rubro "${sub}"? Los tipos asignados quedarán en "Otros".`))return;
+  try{await deleteRubro(sub);await loadAll();}
   catch(e){showAlert('Error: '+e.message,'err');}
 }
 async function accionAgregarCat(){
   const v=document.getElementById('new-cat')?.value.trim();
-  const sub=document.getElementById('new-cat-sub')?.value;
-  if(!v){showAlert('Ingresá un nombre de categoría.','err');return;}
-  if(!sub){showAlert('Elegí una subcategoría.','err');return;}
-  if(cats.includes(v)){showAlert('Esa categoría ya existe.','err');return;}
-  try{await saveCat(v,sub);await loadAll();showAlert(`Categoría "${v}" agregada en ${sub}.`);}
+  const sub=document.getElementById('new-tipo-rubro')?.value;
+  if(!v){showAlert('Ingresá un nombre de tipo.','err');return;}
+  if(!sub){showAlert('Elegí una rubro.','err');return;}
+  if(cats.includes(v)){showAlert('Ese tipo ya existe.','err');return;}
+  try{await saveCat(v,sub);await loadAll();showAlert(`Tipo "${v}" agregado en ${sub}.`);}
   catch(e){showAlert('Error: '+e.message,'err');}
 }
 async function accionEliminarCat(cat){
-  if(!confirm(`¿Eliminar la categoría "${cat}"?`))return;
-  try{await deleteCat(cat);await loadAll();}
-  catch(e){showAlert('Error al eliminar.','err');}
+  // Build reassign dialog
+  const rubrosOpts = rubros_list.map(r=>`<option value="${r}">${r}</option>`).join('');
+  const tiposOpts = cats.filter(c=>c!==cat).sort((a,b)=>(getSub(a)+a).localeCompare(getSub(b)+b,'es')).map(c=>`<option value="${c}">${getSub(c)} · ${c}</option>`).join('');
+  
+  // Create modal
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:400px;max-width:90vw;border:1px solid var(--border)">
+      <div style="font-size:15px;font-weight:500;margin-bottom:6px">Eliminar tipo "${cat}"</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Los gastos cargados con este tipo se reasignarán al tipo que elijas.</p>
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Reasignar gastos a:</label>
+      <select id="reassign-tipo" style="width:100%;margin-bottom:16px">
+        <option value="">— Elegir tipo destino —</option>
+        ${tiposOpts}
+      </select>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" onclick="this.closest('div[style*=fixed]')?.remove()">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmarEliminarCat('${cat.replace(/'/g,"\'")}')">Eliminar y reasignar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+async function confirmarEliminarCat(cat){
+  const destino = document.getElementById('reassign-tipo')?.value;
+  if(!destino){showAlert('Elegí un tipo destino para los gastos.','err');return;}
+  // Remove modal
+  document.querySelector('div[style*="position:fixed"]')?.remove();
+  try {
+    // Reassign all gastos from old cat to new cat
+    const url = new URL(SUPABASE_URL + '/rest/v1/gastos');
+    url.searchParams.set('categoria', 'eq.' + cat);
+    await fetch(url, {
+      method: 'PATCH',
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+      body: JSON.stringify({categoria: destino})
+    });
+    // Also reassign presupuestos
+    const url2 = new URL(SUPABASE_URL + '/rest/v1/presupuestos');
+    url2.searchParams.set('categoria', 'eq.' + cat);
+    await fetch(url2, {
+      method: 'DELETE',
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+    });
+    await deleteCat(cat);
+    await loadAll();
+    showAlert(`Tipo "${cat}" eliminado. Gastos reasignados a "${destino}".`);
+  } catch(e){showAlert('Error: '+e.message,'err');}
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
